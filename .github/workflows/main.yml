@@ -12,7 +12,7 @@ jobs:
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          authkey: ${{ tskey-auth-kDi3BYK26S11CNTRL-h6GfhDkB4WRw8rWetYbyVRu3HxftgPSV5 }}
           args: --hostname=github-rdp-${{ github.run_id }}
 
       - name: Enable RDP & Configure Firewall
