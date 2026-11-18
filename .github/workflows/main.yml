@@ -1,0 +1,44 @@
+name: Windows RDP via Tailscale
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          args: --hostname=github-rdp-${{ github.run_id }}
+
+      - name: Enable RDP & Configure Firewall
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0 -Force
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1 -Force
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Restart-Service TermService -Force
+
+      - name: Create RDP User
+        run: |
+          $Password = -join ((33..126) | Get-Random -Count 16 | ForEach-Object {[char]$_})
+          $SecurePassword = ConvertTo-SecureString $Password -AsPlainText -Force
+          New-LocalUser -Name "rdpuser" -Password $SecurePassword -FullName "RDP User" -Description "Temporary RDP Account"
+          Add-LocalGroupMember -Group "Administrators" -Member "rdpuser"
+          Add-LocalGroupMember -Group "Remote Desktop Users" -Member "rdpuser"
+          
+          $TS_IP = tailscale ip -4
+          Write-Host "=========================================="
+          Write-Host "Tailscale IP : $TS_IP"
+          Write-Host "Username     : rdpuser"
+          Write-Host "Password     : $Password"
+          Write-Host "=========================================="
+
+      - name: Keep Session Alive
+        run: |
+          while ($true) {
+            Start-Sleep -Seconds 60
+          }
